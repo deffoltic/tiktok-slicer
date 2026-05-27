@@ -223,7 +223,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     document.addEventListener("mousemove", (e) => {
         if (!isDragging) return;
-        const container = previewModal.parentNode.querySelector(".video-container");
+        const container = document.querySelector(".video-container");
         const deltaX = e.clientX - startX;
         let newLeft = startLeft + deltaX;
 
@@ -255,12 +255,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             const rect = boundingBox.getBoundingClientRect();
             const containerRect = document.querySelector(".video-container").getBoundingClientRect();
             startLeft = rect.left - containerRect.left;
+            if (e.cancelable) e.preventDefault();
         }
     });
 
     document.addEventListener("touchmove", (e) => {
         if (!isDragging || e.touches.length !== 1) return;
-        const container = previewModal.parentNode.querySelector(".video-container");
+        if (e.cancelable) e.preventDefault();
+        const container = document.querySelector(".video-container");
         const deltaX = e.touches[0].clientX - startX;
         let newLeft = startLeft + deltaX;
 
@@ -292,6 +294,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const playPauseBtn = document.getElementById("btn-play-pause");
     const videoTimeDisplay = document.getElementById("video-time-display");
     const sourceVideo = document.getElementById("source-video");
+    const seekSlider = document.getElementById("video-seek-slider");
 
     if (playPauseBtn && sourceVideo) {
         playPauseBtn.addEventListener("click", () => {
@@ -310,7 +313,18 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const total = formatTime(sourceVideo.duration || 0);
                 videoTimeDisplay.innerText = `${current} / ${total}`;
             }
+            if (seekSlider && sourceVideo.duration) {
+                seekSlider.value = (sourceVideo.currentTime / sourceVideo.duration) * 100;
+            }
         });
+
+        if (seekSlider) {
+            seekSlider.addEventListener("input", () => {
+                if (sourceVideo.duration) {
+                    sourceVideo.currentTime = (seekSlider.value / 100) * sourceVideo.duration;
+                }
+            });
+        }
 
         sourceVideo.addEventListener("play", () => {
             playPauseBtn.innerText = "⏸ Pause";
@@ -321,8 +335,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Window resize handler to keep crop box alignment
-    window.addEventListener("resize", updateCropBoxDOM);
+    // Automatically update crop box when container resizes
+    const container = document.querySelector(".video-container");
+    if (container) {
+        const resizeObserver = new ResizeObserver(() => {
+            updateCropBoxDOM();
+        });
+        resizeObserver.observe(container);
+    }
 });
 
 // Update Subscription status in the app
@@ -360,7 +380,7 @@ function handleVideoSelection(file) {
         document.getElementById("btn-slice").disabled = false;
 
         document.getElementById("placeholder-viewport").style.display = "none";
-        document.getElementById("crop-overlay-container").style.display = "flex";
+        document.getElementById("crop-overlay-container").style.display = "block";
 
         // Show source video player and custom controls
         video.style.display = "block";
@@ -370,6 +390,10 @@ function handleVideoSelection(file) {
         const videoTimeDisplay = document.getElementById("video-time-display");
         if (videoTimeDisplay) {
             videoTimeDisplay.innerText = `00:00 / ${formatTime(video.duration)}`;
+        }
+        const seekSlider = document.getElementById("video-seek-slider");
+        if (seekSlider) {
+            seekSlider.value = 0;
         }
 
         // Initialize/reset crop box placement to center

@@ -534,9 +534,6 @@ input[type="range"]::-webkit-slider-thumb:hover {
     right: 0;
     bottom: 0;
     pointer-events: none; /* Let clicks pass to the video controls */
-    display: flex;
-    justify-content: center;
-    align-items: center;
 }
 
 .crop-bounding-box {
@@ -992,18 +989,26 @@ input[type="range"]::-webkit-slider-thumb:hover {
 
 .modal-close-btn {
     position: absolute;
-    top: 16px;
-    right: 16px;
-    background: transparent;
+    top: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.5);
     border: none;
-    color: var(--text-secondary);
-    font-size: 20px;
+    color: white;
+    font-size: 14px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     cursor: pointer;
     transition: var(--transition-smooth);
+    z-index: 1010;
 }
 
 .modal-close-btn:hover {
-    color: white;
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
 }
 
 .modal-subtitle {

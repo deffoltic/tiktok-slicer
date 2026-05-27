@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -122,6 +122,7 @@
                         <!-- Custom Video Controls -->
                         <div class="video-controls-row" id="custom-video-controls" style="display: none;">
                             <button class="control-btn" id="btn-play-pause">▶ Play</button>
+                            <input type="range" id="video-seek-slider" min="0" max="100" value="0" step="0.1" style="flex: 1; margin: 0 12px;">
                             <span class="video-time" id="video-time-display">00:00 / 00:00</span>
                         </div>
                     </div>
@@ -163,14 +164,14 @@
 
     <!-- Video Preview Modal -->
     <div class="modal-overlay" id="preview-modal">
-        <button class="modal-close-btn" id="btn-close-preview" style="z-index: 1010;">✕</button>
         <div class="modal-box preview-box glass-card">
+            <button class="modal-close-btn" id="btn-close-preview">✕</button>
             <div class="preview-video-wrapper">
                 <video id="preview-player" controls></video>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=3"></script>
 </body>
 </html>
