@@ -3,6 +3,7 @@ let currentVideoFile = null;
 let subscriptionActive = true;
 let db = null;
 let currentRenderProcess = null; // To track active rendering for cancellations
+let cropPercent = 0.5; // Drag position of the crop boundary (0 = leftmost, 0.5 = centered, 1 = rightmost)
 
 // Audio nodes (must be initialized once to avoid browser errors)
 let audioCtx = null;
@@ -150,6 +151,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         boundingBox.style.aspectRatio = "9/16";
         boundingBox.style.height = "100%";
         boundingBox.style.width = "auto";
+        setTimeout(updateCropBoxDOM, 50);
     });
 
     layoutFit.addEventListener("click", () => {
@@ -158,6 +160,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         boundingBox.style.aspectRatio = "16/9";
         boundingBox.style.width = "100%";
         boundingBox.style.height = "auto";
+        setTimeout(updateCropBoxDOM, 50);
     });
 
     // Resolution selector toggling
@@ -200,12 +203,93 @@ document.addEventListener("DOMContentLoaded", async () => {
     const btnSlice = document.getElementById("btn-slice");
     btnSlice.addEventListener("click", startSlicingFlow);
 
+    // Drag-and-drop crop box logic
+    boundingBox.style.pointerEvents = "auto";
+    boundingBox.style.cursor = "grab";
+
+    let isDragging = false;
+    let startX = 0;
+    let startLeft = 0;
+
+    boundingBox.addEventListener("mousedown", (e) => {
+        isDragging = true;
+        boundingBox.style.cursor = "grabbing";
+        startX = e.clientX;
+        const rect = boundingBox.getBoundingClientRect();
+        const containerRect = previewModal.parentNode.querySelector(".video-container").getBoundingClientRect();
+        startLeft = rect.left - containerRect.left;
+        e.preventDefault();
+    });
+
+    document.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        const container = previewModal.parentNode.querySelector(".video-container");
+        const deltaX = e.clientX - startX;
+        let newLeft = startLeft + deltaX;
+
+        const containerWidth = container.clientWidth;
+        const boxWidth = boundingBox.clientWidth;
+        const maxLeft = containerWidth - boxWidth;
+
+        if (newLeft < 0) newLeft = 0;
+        if (newLeft > maxLeft) newLeft = maxLeft;
+
+        boundingBox.style.left = newLeft + "px";
+        boundingBox.style.margin = "0";
+
+        cropPercent = maxLeft > 0 ? (newLeft / maxLeft) : 0.5;
+    });
+
+    document.addEventListener("mouseup", () => {
+        if (isDragging) {
+            isDragging = false;
+            boundingBox.style.cursor = "grab";
+        }
+    });
+
+    // Touch support for dragging
+    boundingBox.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 1) {
+            isDragging = true;
+            startX = e.touches[0].clientX;
+            const rect = boundingBox.getBoundingClientRect();
+            const containerRect = previewModal.parentNode.querySelector(".video-container").getBoundingClientRect();
+            startLeft = rect.left - containerRect.left;
+        }
+    });
+
+    document.addEventListener("touchmove", (e) => {
+        if (!isDragging || e.touches.length !== 1) return;
+        const container = previewModal.parentNode.querySelector(".video-container");
+        const deltaX = e.touches[0].clientX - startX;
+        let newLeft = startLeft + deltaX;
+
+        const containerWidth = container.clientWidth;
+        const boxWidth = boundingBox.clientWidth;
+        const maxLeft = containerWidth - boxWidth;
+
+        if (newLeft < 0) newLeft = 0;
+        if (newLeft > maxLeft) newLeft = maxLeft;
+
+        boundingBox.style.left = newLeft + "px";
+        boundingBox.style.margin = "0";
+
+        cropPercent = maxLeft > 0 ? (newLeft / maxLeft) : 0.5;
+    });
+
+    document.addEventListener("touchend", () => {
+        isDragging = false;
+    });
+
     // Cancel slicing
     document.getElementById("btn-cancel-slice").addEventListener("click", () => {
         if (currentRenderProcess) {
             currentRenderProcess.cancelled = true;
         }
     });
+
+    // Window resize handler to keep crop box alignment
+    window.addEventListener("resize", updateCropBoxDOM);
 });
 
 // Update Subscription status in the app
@@ -244,6 +328,13 @@ function handleVideoSelection(file) {
 
         document.getElementById("placeholder-viewport").style.display = "none";
         document.getElementById("crop-overlay-container").style.display = "flex";
+
+        // Show source video player
+        video.style.display = "block";
+
+        // Initialize/reset crop box placement to center
+        cropPercent = 0.5;
+        setTimeout(updateCropBoxDOM, 100);
     };
 }
 
@@ -436,10 +527,10 @@ function drawVideoFrame(video, canvas, ctx, cropStyle) {
     ctx.fillRect(0, 0, cW, cH);
 
     if (cropStyle === "CENTER_CROP") {
-        // Landscape to Vertical Center Crop (scales video height to match canvas height, crops sides)
+        // Landscape to Vertical Crop (uses custom horizontal dragging position offset)
         const scale = cH / vH;
         const scaledWidth = vW * scale;
-        const xOffset = (cW - scaledWidth) / 2;
+        const xOffset = -cropPercent * (scaledWidth - cW);
         ctx.drawImage(video, xOffset, 0, scaledWidth, cH);
     } else {
         // Fit Landscape (adds letterboxes on top and bottom)
@@ -450,6 +541,26 @@ function drawVideoFrame(video, canvas, ctx, cropStyle) {
     }
 
     // Watermark removed
+}
+
+// Draggable Crop Box UI updating helper
+function updateCropBoxDOM() {
+    const boundingBox = document.getElementById("bounding-box-9-16");
+    const container = document.querySelector(".video-container");
+    
+    if (!boundingBox || !container) return;
+    
+    const containerWidth = container.clientWidth;
+    const boxWidth = boundingBox.clientWidth;
+    const maxLeft = containerWidth - boxWidth;
+    
+    if (maxLeft > 0) {
+        boundingBox.style.left = (cropPercent * maxLeft) + "px";
+        boundingBox.style.margin = "0";
+    } else {
+        boundingBox.style.left = "0px";
+        boundingBox.style.margin = "";
+    }
 }
 
 // Download Trigger
