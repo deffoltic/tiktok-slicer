@@ -544,7 +544,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     aspect-ratio: 9 / 16;
     border: 2px solid var(--accent-cyan);
     box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.6); /* Shadow out context outside crop */
-    position: relative;
+    position: absolute;
     transition: aspect-ratio 0.3s;
 }
 
@@ -1237,4 +1237,36 @@ input[type="range"]::-webkit-slider-thumb:hover {
     .app-main {
         padding: 16px;
     }
+}
+
+/* Custom Video Controls styling */
+.video-controls-row {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-glass);
+    padding: 8px 16px;
+    border-radius: 8px;
+}
+.control-btn {
+    background: var(--accent-cyan);
+    color: #000;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+    transition: var(--transition-smooth);
+}
+.control-btn:hover {
+    background: #1fd8d2;
+    transform: translateY(-1px);
+}
+.video-time {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 600;
 }

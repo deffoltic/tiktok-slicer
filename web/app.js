@@ -216,7 +216,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         boundingBox.style.cursor = "grabbing";
         startX = e.clientX;
         const rect = boundingBox.getBoundingClientRect();
-        const containerRect = previewModal.parentNode.querySelector(".video-container").getBoundingClientRect();
+        const containerRect = document.querySelector(".video-container").getBoundingClientRect();
         startLeft = rect.left - containerRect.left;
         e.preventDefault();
     });
@@ -253,7 +253,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             isDragging = true;
             startX = e.touches[0].clientX;
             const rect = boundingBox.getBoundingClientRect();
-            const containerRect = previewModal.parentNode.querySelector(".video-container").getBoundingClientRect();
+            const containerRect = document.querySelector(".video-container").getBoundingClientRect();
             startLeft = rect.left - containerRect.left;
         }
     });
@@ -287,6 +287,39 @@ document.addEventListener("DOMContentLoaded", async () => {
             currentRenderProcess.cancelled = true;
         }
     });
+
+    // Custom Video controls
+    const playPauseBtn = document.getElementById("btn-play-pause");
+    const videoTimeDisplay = document.getElementById("video-time-display");
+    const sourceVideo = document.getElementById("source-video");
+
+    if (playPauseBtn && sourceVideo) {
+        playPauseBtn.addEventListener("click", () => {
+            if (sourceVideo.paused || sourceVideo.ended) {
+                sourceVideo.play();
+                playPauseBtn.innerText = "⏸ Pause";
+            } else {
+                sourceVideo.pause();
+                playPauseBtn.innerText = "▶ Play";
+            }
+        });
+
+        sourceVideo.addEventListener("timeupdate", () => {
+            if (videoTimeDisplay) {
+                const current = formatTime(sourceVideo.currentTime);
+                const total = formatTime(sourceVideo.duration || 0);
+                videoTimeDisplay.innerText = `${current} / ${total}`;
+            }
+        });
+
+        sourceVideo.addEventListener("play", () => {
+            playPauseBtn.innerText = "⏸ Pause";
+        });
+
+        sourceVideo.addEventListener("pause", () => {
+            playPauseBtn.innerText = "▶ Play";
+        });
+    }
 
     // Window resize handler to keep crop box alignment
     window.addEventListener("resize", updateCropBoxDOM);
@@ -329,8 +362,15 @@ function handleVideoSelection(file) {
         document.getElementById("placeholder-viewport").style.display = "none";
         document.getElementById("crop-overlay-container").style.display = "flex";
 
-        // Show source video player
+        // Show source video player and custom controls
         video.style.display = "block";
+        const customControls = document.getElementById("custom-video-controls");
+        if (customControls) customControls.style.display = "flex";
+        
+        const videoTimeDisplay = document.getElementById("video-time-display");
+        if (videoTimeDisplay) {
+            videoTimeDisplay.innerText = `00:00 / ${formatTime(video.duration)}`;
+        }
 
         // Initialize/reset crop box placement to center
         cropPercent = 0.5;
