@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="TikTok Slicer - Automatically cut and crop landscape movies into portrait (9:16) clips for TikTok, Shorts, and Reels client-side.">
+    <title>TikTok Slicer - Web Video Editor & Slicing Tool</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Main Navigation Bar -->
+    <header class="app-header">
+        <div class="header-logo">
+            <span class="logo-icon">🎬</span>
+            <h1>TIKTOK <span>SLICER</span></h1>
+        </div>
+        <nav class="header-nav">
+            <button class="nav-btn active" id="btn-editor" data-target="tab-editor">Editor</button>
+            <button class="nav-btn" id="btn-gallery" data-target="tab-gallery">My Gallery</button>
+            <button class="nav-btn premium-badge-btn" id="btn-premium" data-target="tab-premium">
+                Go Premium <span class="badge" id="sub-status-badge">Free</span>
+            </button>
+        </nav>
+    </header>
+
+    <main class="app-main">
+        <!-- Editor Tab -->
+        <section id="tab-editor" class="tab-content active">
+            <div class="editor-grid">
+                
+                <!-- Left Panel: Upload and Configs -->
+                <div class="config-panel glass-card">
+                    <div class="panel-section">
+                        <h2>Select Movie File</h2>
+                        <div class="upload-area" id="upload-zone">
+                            <input type="file" id="video-input" accept="video/*" style="display: none;">
+                            <div class="upload-prompt">
+                                <span class="upload-icon">📂</span>
+                                <p class="primary-text">Drag & Drop Landscape Movie</p>
+                                <p class="secondary-text">or click to browse storage</p>
+                            </div>
+                            <div class="file-loaded-info" style="display: none;" id="loaded-info">
+                                <span class="loaded-icon">✅</span>
+                                <p class="file-name" id="display-name">movie.mp4</p>
+                                <p class="file-duration" id="display-duration">Duration: 00:00</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel-section disabled-state" id="editor-configs">
+                        <h2>Slicing Settings</h2>
+                        
+                        <!-- Clip Duration -->
+                        <div class="config-item">
+                            <div class="config-header">
+                                <label for="clip-duration">Target Clip Duration</label>
+                                <span class="config-val" id="duration-val">15s</span>
+                            </div>
+                            <div class="slider-wrapper">
+                                <input type="range" id="clip-duration" min="10" max="60" value="15" step="5" disabled>
+                                <span class="lock-indicator" id="duration-lock" title="Durations > 15s require Pro">🔒</span>
+                            </div>
+                        </div>
+
+                        <!-- Resolution -->
+                        <div class="config-item">
+                            <label>Export Quality</label>
+                            <div class="radio-selector">
+                                <label class="radio-option active">
+                                    <input type="radio" name="export-res" value="720" checked disabled>
+                                    <span>HD (720p)</span>
+                                </label>
+                                <label class="radio-option locked-option" id="res-1080-option">
+                                    <input type="radio" name="export-res" value="1080" disabled>
+                                    <span>Full HD (1080p) <span class="lock-icon">🔒</span></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Crop Style -->
+                        <div class="config-item">
+                            <label>Aspect Ratio Layout</label>
+                            <div class="layout-selector">
+                                <button class="layout-btn active" id="layout-crop" disabled>
+                                    <strong>Center Crop (9:16)</strong>
+                                    <small>Fills vertical frame</small>
+                                </button>
+                                <button class="layout-btn" id="layout-fit" disabled>
+                                    <strong>Fit (9:16)</strong>
+                                    <small>Adds letterbox bars</small>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Generate Button -->
+                        <button class="action-btn" id="btn-slice" disabled>
+                            SLICE MOVIE TO TIKTOKS
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Right Panel: Viewports & Render Outputs -->
+                <div class="viewport-panel">
+                    
+                    <!-- Preview and Cropping Guides -->
+                    <div class="viewport-card glass-card">
+                        <h3>Input Viewport & Slicing Margins</h3>
+                        <div class="video-container">
+                            <video id="source-video" style="display: none;" preload="auto"></video>
+                            <div class="placeholder-viewport" id="placeholder-viewport">
+                                <span class="placeholder-icon">📺</span>
+                                <p>Load a video to visualize the 9:16 crop boundaries</p>
+                            </div>
+                            <!-- Live overlay cropping box guides -->
+                            <div class="crop-guides-container" id="crop-overlay-container" style="display: none;">
+                                <div class="crop-bounding-box" id="bounding-box-9-16">
+                                    <div class="crop-corners"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rendering / Exporting Canvas -->
+                    <div class="viewport-card glass-card processing-card" id="export-monitor-card" style="display: none;">
+                        <h3>Export Rendering Output (1080x1920)</h3>
+                        <div class="canvas-container">
+                            <canvas id="render-canvas" width="1080" height="1920"></canvas>
+                            <div class="progress-overlay" id="render-progress-overlay">
+                                <div class="progress-box">
+                                    <span class="processing-spinner"></span>
+                                    <h4 id="progress-header">Generating Clip 1...</h4>
+                                    <div class="bar-container">
+                                        <div class="bar-fill" id="progress-bar-fill"></div>
+                                    </div>
+                                    <p class="progress-percent" id="progress-percent-text">0%</p>
+                                    <button class="cancel-btn" id="btn-cancel-slice">Cancel Slicing</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Gallery Tab -->
+        <section id="tab-gallery" class="tab-content">
+            <div class="gallery-header">
+                <h2>Generated TikTok Videos</h2>
+                <p>Preview, play, and download your processed clips client-side.</p>
+            </div>
+            <div class="gallery-grid" id="gallery-video-grid">
+                <!-- Dynamically filled with clip cards -->
+            </div>
+        </section>
+
+        <!-- Premium / Subscription Tab -->
+        <section id="tab-premium" class="tab-content">
+            <div class="premium-header">
+                <h2>Unlock Full Video Export Potential</h2>
+                <p>Remove limits, export in Full HD 1080p, and slice unlimited clips with zero watermarks.</p>
+            </div>
+
+            <div class="pricing-cards">
+                <!-- Free Plan -->
+                <div class="price-card glass-card">
+                    <div class="plan-badge">Standard</div>
+                    <h3>Free Plan</h3>
+                    <div class="price">$0<span>/forever</span></div>
+                    <ul class="features-list">
+                        <li><span>✔</span> Limit slices to 15 seconds</li>
+                        <li><span>✔</span> HD 720p maximum resolution</li>
+                        <li><span>❌</span> "TikTok Slicer" watermark overlay</li>
+                        <li><span>❌</span> VIP high-quality rendering</li>
+                        <li><span>✔</span> 100% browser local storage security</li>
+                    </ul>
+                    <button class="plan-btn disabled" id="free-plan-btn">Active Plan</button>
+                </div>
+
+                <!-- Pro Plan -->
+                <div class="price-card glass-card popular">
+                    <div class="plan-badge gradient-bg">Recommended</div>
+                    <h3>Pro Plan</h3>
+                    <div class="price">$9<span>/month</span></div>
+                    <ul class="features-list">
+                        <li><span>✔</span> Slices up to 60 seconds</li>
+                        <li><span>✔</span> Full HD 1080p resolution</li>
+                        <li><span>✔</span> Zero watermarks (clean exports)</li>
+                        <li><span>✔</span> Priority rendering speed</li>
+                        <li><span>✔</span> Dedicated scene-cut guidance</li>
+                    </ul>
+                    <button class="plan-btn active-gradient-btn" id="pro-checkout-btn">Upgrade Now</button>
+                </div>
+
+                <!-- Lifetime VIP -->
+                <div class="price-card glass-card">
+                    <div class="plan-badge">VIP Pass</div>
+                    <h3>Lifetime VIP</h3>
+                    <div class="price">$29<span>/once</span></div>
+                    <ul class="features-list">
+                        <li><span>✔</span> All Pro Plan features forever</li>
+                        <li><span>✔</span> Lifetime updates and code downloads</li>
+                        <li><span>✔</span> Direct email priority developer support</li>
+                        <li><span>✔</span> Custom layout integrations</li>
+                        <li><span>✔</span> 100% ad-free experience</li>
+                    </ul>
+                    <button class="plan-btn" id="vip-checkout-btn">Get VIP Access</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Payment Simulator Modal Overlay -->
+    <div class="modal-overlay" id="checkout-modal">
+        <div class="modal-box glass-card">
+            <button class="modal-close-btn" id="btn-close-modal">✕</button>
+            <h2>Upgrade to Pro Plan</h2>
+            <p class="modal-subtitle">Secure billing hosted via payment gateways. Experience the sandbox checkout simulator below.</p>
+            
+            <div class="payment-tabs">
+                <button class="pay-tab active" id="tab-card-btn">💳 Credit Card</button>
+                <button class="pay-tab" id="tab-crypto-btn">🪙 Cryptocurrency</button>
+            </div>
+
+            <!-- Card Payment Form -->
+            <form class="payment-form" id="form-card-pay" onsubmit="event.preventDefault();">
+                <div class="form-group">
+                    <label>Cardholder Name</label>
+                    <input type="text" placeholder="John Doe" required id="card-name">
+                </div>
+                <div class="form-group">
+                    <label>Card Number</label>
+                    <input type="text" placeholder="4000 1234 5678 9010" maxlength="19" required id="card-num">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Expiry Date</label>
+                        <input type="text" placeholder="MM/YY" maxlength="5" required id="card-expiry">
+                    </div>
+                    <div class="form-group">
+                        <label>CVC / CVV</label>
+                        <input type="password" placeholder="***" maxlength="3" required id="card-cvc">
+                    </div>
+                </div>
+                <button class="pay-action-btn" id="btn-submit-card-pay">Pay $9.00 USD</button>
+            </form>
+
+            <!-- Crypto Payment -->
+            <div class="payment-form" id="form-crypto-pay" style="display: none;">
+                <div class="crypto-details">
+                    <p class="crypto-label">Send exactly <strong>0.00015 BTC</strong> or <strong>9.00 USDT</strong> to the wallet address below:</p>
+                    <div class="address-box">
+                        <code id="wallet-address">bc1qxy2kg3ut5xgpv9fcmtfpt28rl45x6px03prss2</code>
+                        <button class="copy-btn" id="btn-copy-address">Copy</button>
+                    </div>
+                    <div class="crypto-qr">
+                        <div class="qr-placeholder">QR Code Scanner Simulator</div>
+                    </div>
+                    <p class="crypto-note">The system detects payments automatically. Press the simulated payment check button below.</p>
+                </div>
+                <button class="pay-action-btn" id="btn-submit-crypto-pay">Check Sandbox Transaction</button>
+            </div>
+
+            <!-- Sandbox Helper Alert -->
+            <div class="sandbox-alert">
+                <span>💡</span>
+                <p><strong>Sandbox Simulator Mode:</strong> You can enter any mock details and press pay/check to unlock Pro features instantly.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Preview Modal -->
+    <div class="modal-overlay" id="preview-modal">
+        <div class="modal-box preview-box glass-card">
+            <button class="modal-close-btn" id="btn-close-preview">✕</button>
+            <div class="preview-video-wrapper">
+                <video id="preview-player" controls></video>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

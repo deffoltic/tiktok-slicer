@@ -1,0 +1,24 @@
+name: Deploy Web App to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main # Or change to master if your default branch is master
+    paths:
+      - 'web/**' # Trigger only when files in the web/ directory change
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Deploy to GitHub Pages 🚀
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: web # The subfolder containing our website files
+          branch: gh-pages # The branch the action will deploy to
