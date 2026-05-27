@@ -180,10 +180,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
 
     // Preview video modal close
-    document.getElementById("btn-close-preview").addEventListener("click", () => {
+    const previewModal = document.getElementById("preview-modal");
+    const closePreview = () => {
         const previewPlayer = document.getElementById("preview-player");
         previewPlayer.pause();
-        document.getElementById("preview-modal").classList.remove("active");
+        previewModal.classList.remove("active");
+    };
+
+    document.getElementById("btn-close-preview").addEventListener("click", closePreview);
+
+    // Close modal when clicking outside (on the overlay background)
+    previewModal.addEventListener("click", (e) => {
+        if (e.target === previewModal) {
+            closePreview();
+        }
     });
 
     // Slicing Trigger
@@ -281,13 +291,12 @@ async function startSlicingFlow() {
         try {
             const blob = await renderSegment(video, canvas, start, end, cropStyle, i + 1, totalClips);
             if (blob && !currentRenderProcess.cancelled) {
-                const name = `clip_${i + 1}_of_${totalClips}_${Date.now()}.mp4`;
+                // Determine file extension based on MIME type (MP4 vs WebM fallback)
+                const ext = blob.type.includes('mp4') ? 'mp4' : 'webm';
+                const name = `clip_${i + 1}_of_${totalClips}_${Date.now()}.${ext}`;
                 
-                // 1. Save to database
+                // 1. Save to database (gallery)
                 await addClipToDB(name, blob);
-
-                // 2. Auto-trigger browser download
-                triggerFileDownload(blob, name);
             }
         } catch (err) {
             console.error("Error exporting clip:", err);
@@ -300,8 +309,9 @@ async function startSlicingFlow() {
     document.getElementById("editor-configs").classList.remove("disabled-state");
     currentRenderProcess = null;
 
-    // Load gallery update
+    // Load gallery update and automatically switch to Gallery tab
     loadGallery();
+    document.getElementById("btn-gallery").click();
 }
 
 // Global Audio initializations
@@ -336,17 +346,22 @@ function renderSegment(video, canvas, start, end, cropStyle, index, total) {
             audioDestination.stream.getAudioTracks().forEach(t => combinedStream.addTrack(t));
 
             // Select supported encoding mime-type
-            let options = { mimeType: 'video/webm;codecs=vp9,opus' };
-            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options = { mimeType: 'video/webm;codecs=vp8,opus' };
+            let selectedMimeType = 'video/mp4;codecs=avc1';
+            
+            if (!MediaRecorder.isTypeSupported(selectedMimeType)) {
+                selectedMimeType = 'video/mp4';
             }
-            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options = { mimeType: 'video/webm' };
+            if (!MediaRecorder.isTypeSupported(selectedMimeType)) {
+                selectedMimeType = 'video/webm;codecs=vp9,opus';
             }
-            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                options = { mimeType: 'video/mp4' };
+            if (!MediaRecorder.isTypeSupported(selectedMimeType)) {
+                selectedMimeType = 'video/webm;codecs=vp8,opus';
+            }
+            if (!MediaRecorder.isTypeSupported(selectedMimeType)) {
+                selectedMimeType = 'video/webm';
             }
 
+            let options = { mimeType: selectedMimeType };
             let recorder;
             try {
                 recorder = new MediaRecorder(combinedStream, options);
@@ -366,7 +381,7 @@ function renderSegment(video, canvas, start, end, cropStyle, index, total) {
                 clearInterval(drawInterval);
                 video.pause();
                 
-                const blob = new Blob(chunks, { type: 'video/mp4' });
+                const blob = new Blob(chunks, { type: recorder.mimeType || selectedMimeType });
                 resolve(blob);
             };
 
