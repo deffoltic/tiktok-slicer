@@ -1,6 +1,6 @@
 // Global Variables
 let currentVideoFile = null;
-let subscriptionActive = false;
+let subscriptionActive = true;
 let db = null;
 let currentRenderProcess = null; // To track active rendering for cancellations
 
@@ -75,9 +75,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("Failed to initialize IndexedDB:", err);
     }
 
-    // 2. Load Subscription state
-    subscriptionActive = localStorage.getItem("isPremium") === "true";
-    updateSubscriptionUI();
+    // 2. Load Subscription state (always active/unlocked)
 
     // 3. Tab Navigation Routing
     const navButtons = document.querySelectorAll(".nav-btn");
@@ -138,12 +136,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     slider.addEventListener("input", (e) => {
         let val = parseInt(e.target.value);
-        // Free version locks > 15 seconds
-        if (!subscriptionActive && val > 15) {
-            val = 15;
-            slider.value = 15;
-            openCheckoutModal();
-        }
         sliderVal.innerText = val + "s";
     });
 
@@ -168,64 +160,22 @@ document.addEventListener("DOMContentLoaded", async () => {
         boundingBox.style.height = "auto";
     });
 
-    // 1080p selection gate
-    const res1080 = document.getElementById("res-1080-option");
-    res1080.addEventListener("click", () => {
-        if (!subscriptionActive) {
-            openCheckoutModal();
-        }
-    });
-
-    // Paywall buttons
-    document.getElementById("pro-checkout-btn").addEventListener("click", openCheckoutModal);
-    document.getElementById("vip-checkout-btn").addEventListener("click", openCheckoutModal);
-
-    // Modal Control listeners
-    const checkoutModal = document.getElementById("checkout-modal");
-    document.getElementById("btn-close-modal").addEventListener("click", closeCheckoutModal);
-
-    // Switch payment tabs in checkout
-    const tabCardBtn = document.getElementById("tab-card-btn");
-    const tabCryptoBtn = document.getElementById("tab-crypto-btn");
-    const formCard = document.getElementById("form-card-pay");
-    const formCrypto = document.getElementById("form-crypto-pay");
-
-    tabCardBtn.addEventListener("click", () => {
-        tabCardBtn.classList.add("active");
-        tabCryptoBtn.classList.remove("active");
-        formCard.style.display = "flex";
-        formCrypto.style.display = "none";
-    });
-
-    tabCryptoBtn.addEventListener("click", () => {
-        tabCryptoBtn.classList.add("active");
-        tabCardBtn.classList.remove("active");
-        formCard.style.display = "none";
-        formCrypto.style.display = "flex";
-    });
-
-    // Simulator Checkout submissions
-    document.getElementById("btn-submit-card-pay").addEventListener("click", () => {
-        const cardNum = document.getElementById("card-num").value;
-        const cardName = document.getElementById("card-name").value;
-        if (!cardNum || !cardName) {
-            alert("Please fill in mock name and card details first.");
-            return;
-        }
-        simulatePaymentSuccess();
-    });
-
-    document.getElementById("btn-submit-crypto-pay").addEventListener("click", () => {
-        simulatePaymentSuccess();
-    });
-
-    document.getElementById("btn-copy-address").addEventListener("click", () => {
-        const address = document.getElementById("wallet-address").innerText;
-        navigator.clipboard.writeText(address).then(() => {
-            document.getElementById("btn-copy-address").innerText = "Copied!";
-            setTimeout(() => {
-                document.getElementById("btn-copy-address").innerText = "Copy";
-            }, 2000);
+    // Resolution selector toggling
+    const radioOptions = document.querySelectorAll(".radio-option");
+    radioOptions.forEach(option => {
+        option.addEventListener("click", () => {
+            const input = option.querySelector("input");
+            if (input.disabled) return;
+            
+            // Toggle active visual state
+            const name = input.getAttribute("name");
+            document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+                r.checked = false;
+                r.closest(".radio-option").classList.remove("active");
+            });
+            
+            input.checked = true;
+            option.classList.add("active");
         });
     });
 
@@ -249,108 +199,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // Update Subscription status in the app
-function updateSubscriptionUI() {
-    const badge = document.getElementById("sub-status-badge");
-    const slider = document.getElementById("clip-duration");
-    const radio1080 = document.getElementById("res-1080-option").querySelector("input");
-    const freeBtn = document.getElementById("free-plan-btn");
-    const proBtn = document.getElementById("pro-checkout-btn");
-
-    if (subscriptionActive) {
-        badge.innerText = "Pro";
-        badge.className = "badge pro";
-        document.getElementById("duration-lock").style.display = "none";
-        document.getElementById("res-1080-option").querySelector(".lock-icon").style.display = "none";
-        document.getElementById("res-1080-option").classList.remove("locked-option");
-
-        freeBtn.innerText = "Downgrade";
-        freeBtn.className = "plan-btn";
-        freeBtn.disabled = false;
-        freeBtn.onclick = toggleFreeDemoMode;
-
-        proBtn.innerText = "Active Plan";
-        proBtn.className = "plan-btn disabled";
-        proBtn.disabled = true;
-        proBtn.onclick = null;
-    } else {
-        badge.innerText = "Free";
-        badge.className = "badge";
-        document.getElementById("duration-lock").style.display = "inline";
-        document.getElementById("res-1080-option").querySelector(".lock-icon").style.display = "inline";
-        document.getElementById("res-1080-option").classList.add("locked-option");
-
-        freeBtn.innerText = "Active Plan";
-        freeBtn.className = "plan-btn disabled";
-        freeBtn.disabled = true;
-        freeBtn.onclick = null;
-
-        proBtn.innerText = "Upgrade Now";
-        proBtn.className = "plan-btn active-gradient-btn";
-        proBtn.disabled = false;
-        proBtn.onclick = openCheckoutModal;
-    }
-}
-
-// Payment simulator success action
-function simulatePaymentSuccess() {
-    const payButtons = document.querySelectorAll(".pay-action-btn");
-    payButtons.forEach(btn => {
-        btn.innerText = "Processing sandbox transaction...";
-        btn.disabled = true;
-    });
-
-    setTimeout(() => {
-        payButtons.forEach(btn => {
-            btn.innerText = "Payment Confirmed! Active Now ✅";
-            btn.style.backgroundColor = "#2ecc71";
-            btn.style.color = "#fff";
-        });
-
-        setTimeout(() => {
-            subscriptionActive = true;
-            localStorage.setItem("isPremium", "true");
-            updateSubscriptionUI();
-            closeCheckoutModal();
-
-            // Reset buttons
-            payButtons.forEach(btn => {
-                btn.innerText = "Pay $9.00 USD";
-                btn.style.backgroundColor = "";
-                btn.style.color = "";
-                btn.disabled = false;
-            });
-        }, 1500);
-    }, 2000);
-}
-
-// Downgrade helper for demo purposes
-function toggleFreeDemoMode() {
-    subscriptionActive = false;
-    localStorage.setItem("isPremium", "false");
-    updateSubscriptionUI();
-    
-    // Fall back selected duration and resolution if above limits
-    const slider = document.getElementById("clip-duration");
-    const sliderVal = document.getElementById("duration-val");
-    if (parseInt(slider.value) > 15) {
-        slider.value = 15;
-        sliderVal.innerText = "15s";
-    }
-
-    const radio720 = document.querySelector('input[name="export-res"][value="720"]');
-    radio720.checked = true;
-    document.querySelector('input[name="export-res"][value="1080"]').checked = false;
-    document.querySelector('.radio-option.active').classList.remove("active");
-    radio720.closest('.radio-option').classList.add("active");
-}
-
-function openCheckoutModal() {
-    document.getElementById("checkout-modal").classList.add("active");
-}
-
-function closeCheckoutModal() {
-    document.getElementById("checkout-modal").classList.remove("active");
-}
+// Subscription features are fully unlocked by default
 
 // Handle video loading
 function handleVideoSelection(file) {
@@ -585,18 +434,7 @@ function drawVideoFrame(video, canvas, ctx, cropStyle) {
         ctx.drawImage(video, 0, yOffset, cW, scaledHeight);
     }
 
-    // Add watermark on Free plan
-    if (!subscriptionActive) {
-        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        ctx.shadowColor = "rgba(0,0,0,0.5)";
-        ctx.shadowBlur = 4;
-        ctx.font = `${Math.round(canvas.width * 0.04)}px 'Outfit', sans-serif`;
-        ctx.textAlign = "right";
-        ctx.fillText("TIKTOK SLICER (FREE)", canvas.width - 24, canvas.height - 30);
-        
-        // Reset shadow
-        ctx.shadowBlur = 0;
-    }
+    // Watermark removed
 }
 
 // Download Trigger
